@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "verdikt",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "uvicorn", "verdikt.server:app", "--host", "127.0.0.1", "--port", "8123"],
+      "port": 8123
+    }
+  ]
+}

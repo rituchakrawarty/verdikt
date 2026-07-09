@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Verdikt — Evidence-to-Decision Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@1,18,400;1,18,500&display=swap" rel="stylesheet">
+<style>
+/* Warm, light, calm system — ivory ground, white rounded cards, one neutral
+   sans (Inter) + serif italic numerals as the only flourish. Light only. */
+:root{
+  color-scheme:light;
+  --bg:#fbf9f3; --surface:#ffffff; --surface-2:#f4f0e6; --ink-card:#1a1a1f;
+  --ink:#1c1c22; --ink-soft:#4a4a52; --muted:#7a776d;
+  --line:#efe9dd; --line-2:#e4dece;
+  --good:#4f7a52; --ok:#4a6b8a; --steel:#5a5f92; --warn:#b0832f; --bad:#b1543f; --danger:#a83f4e;
+  --radius:20px; --radius-sm:13px;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --shadow:0 1px 2px rgba(40,34,20,.04),0 10px 30px -14px rgba(40,34,20,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.55;min-height:100vh}
+a{color:inherit}
+.wrap{max-width:960px;margin:0 auto;padding:0 24px}
+.lab{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.11em;color:var(--muted)}
+.serif-num{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--muted)}
+
+/* ---------- top bar ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:24px 0}
+.brand{display:flex;align-items:center;gap:11px;cursor:pointer}
+.brand .mark{width:24px;height:24px;border-radius:7px;background:var(--ink-card);display:grid;place-items:center;color:#fff;font-size:13px}
+.brand span{font-weight:650;letter-spacing:-.01em;font-size:19px}
+.pill{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+  border:1px solid var(--line-2);padding:6px 13px;border-radius:999px}
+
+/* ---------- home ---------- */
+.home{min-height:70vh;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:30px 0}
+.home .eyebrow{margin-bottom:16px}
+.home h1{font-size:clamp(36px,5.6vw,60px);font-weight:600;letter-spacing:-.03em;line-height:1.04;max-width:16ch}
+.home p.sub{color:var(--ink-soft);font-size:clamp(15px,1.9vw,18px);max-width:60ch;margin:20px 0 32px}
+.search{position:relative;width:min(640px,100%)}
+.search input{width:100%;font-family:var(--sans);font-size:18px;padding:18px 60px 18px 22px;border-radius:999px;
+  border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);outline:none;box-shadow:var(--shadow);
+  transition:border-color .18s,box-shadow .18s}
+.search input::placeholder{color:var(--muted)}
+.search input:focus{border-color:var(--ink);box-shadow:0 0 0 4px rgba(28,28,34,.06),var(--shadow)}
+.search button{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:none;
+  border-radius:50%;background:var(--ink-card);color:#fff;font-size:19px;cursor:pointer;transition:transform .15s}
+.search button:hover{transform:translateY(-50%) scale(1.06)}
+.examples{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
+.ex{font-size:14px;font-weight:500;color:var(--ink-soft);background:var(--surface);border:1px solid var(--line);
+  padding:8px 15px;border-radius:999px;cursor:pointer;transition:all .16s}
+.ex:hover{border-color:var(--ink);color:var(--ink);transform:translateY(-1px)}
+.foot-note{margin-top:34px;font-size:13px;color:var(--muted);max-width:70ch}
+
+/* ---------- shared card ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.stage{padding:20px 0 80px;animation:rise .45s cubic-bezier(.2,.7,.2,1)}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* ---------- confirm (human in the loop) ---------- */
+.confirm{max-width:640px}
+.confirm .head{font-size:clamp(22px,3.4vw,30px);font-weight:600;letter-spacing:-.02em;margin-bottom:6px}
+.confirm .sub{color:var(--ink-soft);font-size:15px;margin-bottom:22px}
+.opts{display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
+.opt{display:flex;align-items:center;gap:14px;padding:16px 18px;border:1.5px solid var(--line-2);border-radius:var(--radius-sm);
+  background:var(--surface);cursor:pointer;transition:all .16s}
+.opt:hover{border-color:var(--ink-soft)}
+.opt.sel{border-color:var(--ink);background:#fbfaf7}
+.opt .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--line-2);flex:none;position:relative;transition:all .16s}
+.opt.sel .radio{border-color:var(--ink)}
+.opt.sel .radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--ink)}
+.opt .oname{font-weight:600;font-size:15.5px}
+.opt .okind{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.opt .oid{font-size:12px;color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums}
+.note-inline{font-size:13.5px;color:var(--ink-soft);background:var(--surface-2);border-radius:var(--radius-sm);
+  padding:12px 15px;margin:14px 0 18px}
+.confirm .go{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:15px;padding:14px 24px;border-radius:999px;
+  background:var(--ink-card);color:#fff;border:none;cursor:pointer;transition:transform .15s,opacity .15s}
+.confirm .go:hover{transform:translateY(-1px)}
+.confirm .back{margin-left:14px;font-size:14px;color:var(--muted);cursor:pointer;background:none;border:none}
+
+/* ---------- reasoning steps (Feynman) ---------- */
+.stage-head{display:flex;align-items:baseline;gap:13px;flex-wrap:wrap;margin-bottom:4px}
+.stage-head h2{font-size:clamp(26px,4vw,40px);font-weight:600;letter-spacing:-.03em}
+.kind{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:5px 10px;border-radius:7px;background:var(--ink-card);color:#fff}
+.eid{font-size:13px;color:var(--muted)}
+.statusline{color:var(--ink-soft);font-size:14.5px;min-height:22px;margin:8px 0 26px;display:flex;align-items:center;gap:10px}
+.spinner{width:14px;height:14px;border:2px solid var(--line-2);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.plan{padding:20px 24px;margin-bottom:18px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius)}
+.plan .lab{margin-bottom:12px}
+.plan ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+.plan li{display:flex;gap:11px;font-size:14.5px;animation:fade .4s both}
+.plan li .q{color:var(--ink)}
+.plan li b{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--muted);flex:none}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+.steps{display:flex;flex-direction:column;gap:12px}
+.step{display:grid;grid-template-columns:auto 1fr;gap:18px;padding:20px 22px;animation:fade .4s both}
+.step .num{font-family:var(--serif);font-style:italic;font-size:34px;line-height:1;color:var(--line-2);min-width:52px;transition:color .3s}
+.step.active .num{color:var(--warn)} .step.done .num{color:var(--good)} .step.error .num{color:var(--bad)}
+.step .purpose{font-weight:600;font-size:15.5px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.step .src{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.step .finding{font-size:14.5px;color:var(--ink-soft);margin-top:9px;min-height:0;opacity:0;max-height:0;overflow:hidden;
+  transition:opacity .4s,max-height .4s}
+.step.done .finding,.step.error .finding{opacity:1;max-height:80px;margin-top:9px}
+.step .mini-spin{width:13px;height:13px;border:2px solid var(--line-2);border-top-color:var(--warn);border-radius:50%;animation:spin .7s linear infinite;display:none}
+.step.active .mini-spin{display:inline-block}
+.step .check{display:none;color:var(--good);font-weight:700}
+.step.done .check{display:inline}
+.step.error .check{display:inline;color:var(--bad)}
+
+/* ---------- brief (calm) ---------- */
+.brief{animation:rise .45s cubic-bezier(.2,.7,.2,1);padding-bottom:90px}
+.note-banner{font-size:13.5px;color:var(--ink-soft);background:var(--surface-2);padding:13px 16px;border-radius:var(--radius-sm);margin:8px 0 6px}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:32px;align-items:center;padding:30px 32px;margin:12px 0 18px}
+@media(max-width:600px){.hero{grid-template-columns:1fr;gap:20px}}
+.dial{position:relative;width:140px;height:140px}
+.dial svg{transform:rotate(-90deg)}
+.dial .num{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.dial .num b{font-size:42px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.dial .num span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+.verdict-chip{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:14px;text-transform:uppercase;
+  letter-spacing:.05em;padding:9px 17px;border-radius:999px;color:#fff}
+.vmean{font-size:14.5px;color:var(--ink-soft);margin:10px 0 0}
+.vmean b{color:var(--ink);font-weight:600}
+.rec{font-size:clamp(17px,2.2vw,22px);font-weight:500;letter-spacing:-.02em;margin:8px 0 0;line-height:1.32}
+
+/* transparent confidence breakdown */
+.confbox{padding:18px 22px;margin:14px 0 4px;background:var(--surface-2);border:1px solid var(--line)}
+.confbox .ch{font-weight:600;font-size:14.5px;margin-bottom:6px}
+.confbox .ch b{font-variant-numeric:tabular-nums}
+.confbox .csub{font-size:13px;color:var(--muted);margin-bottom:14px}
+.cfac{display:grid;grid-template-columns:22px 158px 1fr;gap:14px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
+.cfac:last-child{border-bottom:none}
+.cfac .ar{font-weight:700;font-size:16px;text-align:center;line-height:1}
+.cfac.up .ar{color:var(--good)} .cfac.down .ar{color:var(--bad)} .cfac.neutral .ar{color:var(--muted)}
+.cfac .fn{font-weight:600;font-size:13.5px}
+.cfac .fnote{font-size:13.5px;color:var(--ink-soft);line-height:1.45}
+@media(max-width:560px){.cfac{grid-template-columns:22px 1fr}.cfac .fnote{grid-column:2}}
+
+.qa{display:flex;flex-direction:column;gap:12px;margin:6px 0}
+.qa .row{display:grid;grid-template-columns:210px 1fr;gap:20px;padding:20px 24px;align-items:start}
+@media(max-width:640px){.qa .row{grid-template-columns:1fr;gap:6px}}
+.qa .q{font-family:var(--serif);font-style:italic;font-size:20px;color:var(--ink)}
+.qa .a{font-size:15px;color:var(--ink-soft);line-height:1.55}
+.qa .a b{color:var(--ink);font-weight:600}
+
+.section-title{display:flex;align-items:center;gap:12px;margin:34px 4px 14px}
+.section-title .t{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.section-title::after{content:"";flex:1;height:1px;background:var(--line-2)}
+
+/* --- The Verdikt pipeline: evidence flows Evidence → Reasoning → Decision --- */
+.pipe{display:flex;align-items:stretch;gap:0;margin:18px 0 6px;flex-wrap:nowrap}
+.pnode{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;padding:15px 17px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--radius-sm);cursor:pointer;transition:all .25s}
+.pnode .ph{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px;letter-spacing:-.01em}
+.pnode .pdot{width:11px;height:11px;border-radius:50%;flex:none;background:var(--line-2);transition:all .25s}
+.pnode .pchk{font-size:12px;font-weight:700;margin-left:auto;opacity:0;transition:opacity .25s}
+.pnode .psub{font-size:12.5px;color:var(--muted);padding-left:20px}
+.pnode.todo{opacity:.5}
+.pnode.active{border-color:var(--ink);box-shadow:0 0 0 3px rgba(28,28,34,.05)}
+.pnode.active .pdot{animation:ppulse 1.1s infinite}
+.pnode.done .pchk{opacity:1;color:var(--good)}
+.pconn{flex:none;align-self:center;width:34px;text-align:center;font-size:17px;color:var(--line-2);transition:color .25s}
+.pconn.flowed{color:var(--ink-soft)}
+.pconn.flowing{color:var(--warn);animation:nudge .9s infinite}
+@keyframes ppulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 currentColor}50%{transform:scale(1.35)}}
+@keyframes nudge{0%,100%{transform:translateX(-3px)}50%{transform:translateX(3px)}}
+@media(max-width:640px){.pipe{flex-direction:column}.pconn{width:auto;transform:rotate(90deg);padding:2px 0}}
+
+/* opt-in deep-dive CTA */
+.deep-cta{display:flex;align-items:center;gap:18px;justify-content:space-between;flex-wrap:wrap;
+  padding:16px 20px;margin:12px 0 2px;background:var(--surface-2);border-radius:var(--radius-sm)}
+.deep-cta .dct{font-size:14px;color:var(--ink-soft);max-width:60ch}
+.deep-cta .btn{white-space:nowrap}
+.deep-badge{display:inline-block;font-size:12.5px;font-weight:600;color:var(--good);
+  background:rgba(79,122,82,.1);padding:8px 14px;border-radius:999px;margin:12px 0 2px}
+
+/* section markers that echo the pipeline (no numbered cards) */
+.phase{display:flex;align-items:center;gap:11px;margin:40px 4px 15px;scroll-margin-top:16px}
+.phase .pdot{width:12px;height:12px;border-radius:50%;flex:none}
+.phase .pt{font-size:18px;font-weight:600;letter-spacing:-.01em}
+.phase .ps{font-size:13px;color:var(--muted);margin-left:auto;text-align:right}
+
+/* Evidence table — aligned two columns with row dividers */
+.eve-list{padding:4px 4px}
+.eve{display:grid;grid-template-columns:174px 1fr;gap:20px;align-items:center;padding:15px 18px;border-bottom:1px solid var(--line)}
+.eve:last-child{border-bottom:none}
+.eve .es{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-decoration:none;white-space:nowrap}
+.eve a.es:hover{color:var(--ink);text-decoration:underline}
+.eve .ef{font-size:14.5px;color:var(--ink);line-height:1.45}
+@media(max-width:560px){.eve{grid-template-columns:1fr;gap:4px;align-items:start}}
+
+/* tier badge + conditional deep-dive CTA variants */
+.tier-badge{display:inline-block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);border:1px solid var(--line-2);padding:4px 11px;border-radius:999px;margin-left:12px;vertical-align:middle}
+.deep-cta.worth{background:rgba(79,122,82,.08);border:1px solid rgba(79,122,82,.28)}
+.deep-cta.worth .dct b{color:var(--good)}
+.deep-cta.quiet{background:transparent;border:1px dashed var(--line-2)}
+.deep-cta.quiet .dct{color:var(--muted);font-size:13px}
+
+/* (02) Reasoning steps */
+.rsteps{display:flex;flex-direction:column;gap:12px}
+.rstep{display:grid;grid-template-columns:auto 1fr;gap:16px;padding:18px 22px}
+.rstep .rn{font-family:var(--serif);font-style:italic;font-size:26px;color:var(--good);min-width:30px;line-height:1.1}
+.rstep .rt{font-size:15px;line-height:1.5}
+.rstep .chips{margin-top:9px}
+/* each step opens to show the evidence behind it (no separate Evidence list) */
+.ev-toggle{display:inline-flex;align-items:center;gap:8px;margin-top:13px;font-family:var(--sans);font-size:12.5px;
+  font-weight:600;color:var(--ok);background:rgba(74,107,138,.09);border:1px solid rgba(74,107,138,.24);
+  border-radius:999px;padding:7px 14px;cursor:pointer;transition:all .15s}
+.ev-toggle:hover{background:var(--ok);color:#fff;border-color:var(--ok)}
+.ev-toggle .evt-ic{font-size:11px;line-height:1;transition:transform .2s}
+.rstep.open .ev-toggle .evt-ic{transform:rotate(90deg)}
+.rev-list{display:none;margin-top:13px;padding-top:13px;border-top:1px solid var(--line)}
+.rstep.open .rev-list{display:block}
+.rev{display:grid;grid-template-columns:150px 1fr;gap:14px;padding:6px 0}
+.rev-src{font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:11px;color:var(--muted)}
+.rev-find{font-size:13px;color:var(--ink-soft)}
+.rev-link{text-decoration:none;color:var(--ok);margin-left:6px;font-weight:700}
+@media(max-width:560px){.rev{grid-template-columns:1fr;gap:2px}}
+.foragainst-note{font-size:13px;color:var(--muted);margin:-6px 4px 14px}
+
+/* (03) human decision note */
+.decide{padding:20px 22px;margin-top:14px}
+.decide .dh{font-weight:600;font-size:15px;margin-bottom:4px}
+.decide .dsub{font-size:13.5px;color:var(--muted);margin-bottom:13px}
+.decide textarea{width:100%;font-family:var(--sans);font-size:14.5px;padding:13px 15px;border:1px solid var(--line-2);
+  border-radius:var(--radius-sm);background:var(--surface-2);color:var(--ink);resize:vertical;min-height:70px;outline:none}
+.decide textarea:focus{border-color:var(--ink-soft)}
+
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:680px){.vs{grid-template-columns:1fr}}
+.col{padding:20px 22px}
+.col-h{display:flex;align-items:center;gap:9px;font-weight:600;font-size:15px;margin-bottom:16px}
+.col-h .dotc{width:9px;height:9px;border-radius:50%}
+.col.agree .dotc{background:var(--good)} .col.conflict .dotc{background:var(--bad)}
+.col-h .tag{margin-left:auto;font-size:12px;font-weight:700;color:#fff;padding:2px 9px;border-radius:999px}
+.col.agree .tag{background:var(--good)} .col.conflict .tag{background:var(--bad)}
+.ev{padding:13px 0;border-bottom:1px solid var(--line)}
+.ev:last-child{border-bottom:none;padding-bottom:0}
+.ev .claim{font-weight:600;font-size:14.5px;margin-bottom:3px;letter-spacing:-.01em}
+.ev .detail{font-size:13.5px;color:var(--ink-soft);margin-bottom:9px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;text-decoration:none;padding:5px 10px;
+  border-radius:999px;border:1px solid var(--line-2);color:var(--ink-soft);transition:all .15s}
+.chip:hover{border-color:var(--ink);color:var(--ink)}
+.chip .cd{width:5px;height:5px;border-radius:50%;background:var(--ink-soft)}
+.empty{color:var(--muted);font-size:13.5px;font-style:italic}
+
+.rank-list{display:flex;flex-direction:column;gap:10px}
+.rank{display:flex;gap:15px;padding:16px 20px}
+.rank .rk{font-family:var(--serif);font-style:italic;font-size:24px;color:var(--muted);min-width:34px}
+.rank .rk-name{font-weight:600;font-size:15px;letter-spacing:-.01em}
+.rank .rk-note{font-size:13.5px;color:var(--ink-soft);margin:2px 0 7px}
+
+.src-footer{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.src-link{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;text-decoration:none;padding:11px 16px;
+  border-radius:999px;border:1px solid var(--line-2);background:var(--surface);transition:all .15s}
+.src-link:hover{border-color:var(--ink);transform:translateY(-1px)}
+
+.actions{display:flex;gap:11px;flex-wrap:wrap;margin:34px 0 8px}
+.btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;padding:13px 20px;border-radius:999px;
+  border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer;transition:all .15s;text-decoration:none}
+.btn:hover{border-color:var(--ink);transform:translateY(-1px)}
+.btn.primary{background:var(--ink-card);color:#fff;border-color:var(--ink-card)}
+.disclaimer{margin-top:26px;font-size:12.5px;color:var(--muted);text-align:center}
+
+.skel{background:linear-gradient(90deg,var(--line) 25%,var(--surface-2) 37%,var(--line) 63%);background-size:400% 100%;
+  animation:sk 1.3s ease infinite;border-radius:8px}
+@keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink-card);
+  color:#fff;font-size:14px;font-weight:600;padding:12px 20px;border-radius:12px;transition:all .3s;pointer-events:none;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hidden{display:none!important}
+@media print{.topbar,.actions,.no-print{display:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand" onclick="goHome()"><span class="mark">◆</span><span>Verdikt</span></div>
+    <div class="pill" id="engine-pill">longevity intelligence</div>
+  </header>
+
+  <!-- HOME -->
+  <main id="view-home" class="home">
+    <div class="eyebrow lab">Evidence-to-Decision Engine · Aging &amp; Longevity</div>
+    <h1>One question in. One clear answer out.</h1>
+    <p class="sub">Type in one thing — a drug, a gene, or a disease linked to aging. Verdikt reads
+      five big public science databases, shows its work step by step, and answers three questions:
+      Is this worth pursuing? How sure can we be? What do we still not know? — with a link behind
+      every claim.</p>
+    <form class="search" onsubmit="onSearch(event)">
+      <input id="q" autocomplete="off" placeholder="metformin" />
+      <button type="submit" aria-label="Search">→</button>
+    </form>
+    <div class="examples" id="examples"></div>
+    <p class="foot-note" id="engine-note"></p>
+  </main>
+
+  <!-- CONFIRM (human in the loop) -->
+  <section id="view-confirm" class="stage hidden">
+    <div class="confirm" id="confirm-box"></div>
+  </section>
+
+  <!-- REASONING STEPS -->
+  <section id="view-stage" class="stage hidden">
+    <div class="stage-head">
+      <h2 id="stage-name">…</h2>
+      <span class="kind hidden" id="stage-kind"></span>
+      <span class="eid" id="stage-id"></span>
+    </div>
+    <div class="statusline"><span class="spinner"></span><span id="status-text">Starting…</span></div>
+    <div id="stage-pipe"></div>
+    <div class="plan hidden" id="plan-box"><div class="lab">What I need to find out</div><ul id="plan-list"></ul></div>
+    <div class="steps" id="steps"></div>
+  </section>
+
+  <!-- BRIEF -->
+  <section id="view-brief" class="brief hidden"></section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SRC_LABELS={opentargets:'Open Targets',clinicaltrials:'ClinicalTrials.gov',chembl:'ChEMBL',pubmed:'PubMed',openfda:'openFDA'};
+const EXAMPLES=['metformin','rapamycin','senolytics','klotho','TP53','osteoarthritis'];
+let currentBrief=null, es=null, options=[], selected=0, stepCount=0, curQuery='';
+
+const $=(id)=>document.getElementById(id);
+function show(v){for(const x of ['home','confirm','stage','brief'])$('view-'+x).classList.toggle('hidden',x!==v);}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function goHome(){ if(es)es.close(); show('home'); $('q').value=''; $('q').focus(); }
+function renderExamples(){ $('examples').innerHTML=EXAMPLES.map(e=>`<span class="ex" onclick="runExample('${e}')">${e}</span>`).join(''); }
+function runExample(e){ $('q').value=e; onSearch(); }
+
+async function loadHealth(){
+  try{const h=await (await fetch('/api/health')).json();
+    $('engine-pill').textContent = h.engine==='claude' ? 'Claude · '+h.model : 'heuristic mode';
+    $('engine-note').textContent = h.engine==='claude'
+      ? 'The thinking is done by Claude ('+h.model+').'
+      : 'No Claude key yet — using a simple rule-based fallback. Add a key for a fuller answer.';
+  }catch(e){}
+}
+
+/* ---------- step 1: search → resolve → confirm (human in the loop) ---------- */
+async function onSearch(ev){
+  if(ev)ev.preventDefault();
+  const q=$('q').value.trim(); if(!q)return;
+  curQuery=q;
+  show('confirm');
+  $('confirm-box').innerHTML='<div class="skel" style="height:26px;width:50%;margin-bottom:14px"></div>'+
+    '<div class="skel" style="height:58px;margin-bottom:10px"></div><div class="skel" style="height:58px"></div>';
+  try{
+    const r=await (await fetch('/api/resolve?q='+encodeURIComponent(q))).json();
+    if(!r.entity){ renderNotFound(q); return; }
+    renderConfirm(r.entity);
+  }catch(e){ renderNotFound(q); }
+}
+
+function renderNotFound(q){
+  $('confirm-box').innerHTML=`<div class="head">Hmm — I couldn't find “${q}”.</div>
+    <div class="sub">Try a drug (metformin), a gene (TP53), or a disease (osteoarthritis).</div>
+    <button class="go" onclick="goHome()">← Try another search</button>`;
+}
+
+function renderConfirm(entity){
+  const alts=(entity.alternatives||[]).filter(a=>a.id&&a.id!==entity.id);
+  options=[{kind:entity.kind,id:entity.id,name:entity.name,note:entity.note},
+           ...alts.map(a=>({kind:a.kind,id:a.id,name:a.name}))];
+  selected=0;
+  const note = entity.note ? `<div class="note-inline">ℹ ${entity.note}</div>` : '';
+  $('confirm-box').innerHTML=`
+    <div class="head">Before I dig in — is this what you mean?</div>
+    <div class="sub">I'll investigate the one you pick. This keeps the answer about the right thing.</div>
+    ${note}
+    <div class="opts" id="opts">${options.map((o,i)=>optHtml(o,i)).join('')}</div>
+    <div style="margin-top:20px">
+      <button class="go" onclick="beginRun()">Investigate this →</button>
+      <button class="back" onclick="goHome()">or search again</button>
+    </div>`;
+}
+function optHtml(o,i){
+  return `<div class="opt ${i===selected?'sel':''}" onclick="pickOpt(${i})">
+    <span class="radio"></span>
+    <span><span class="oname">${o.name}</span> &nbsp;<span class="okind">${o.kind}</span></span>
+    <span class="oid">${o.id}</span></div>`;
+}
+function pickOpt(i){ selected=i; document.querySelectorAll('.opt').forEach((el,j)=>el.classList.toggle('sel',j===i)); }
+
+/* ---------- step 2: stream the reasoning ---------- */
+let curDepth='quick';
+function beginRun(depth){
+  curDepth = depth==='deep' ? 'deep' : 'quick';
+  const o=options[selected];
+  if(es)es.close(); currentBrief=null; stepCount=0;
+  show('stage');
+  $('stage-name').textContent=o.name; const k=$('stage-kind');k.textContent=o.kind;k.classList.remove('hidden');
+  $('stage-id').textContent=o.id;
+  $('status-text').textContent = curDepth==='deep' ? 'Running full due diligence…' : 'Getting started…';
+  $('plan-box').classList.add('hidden'); $('plan-list').innerHTML=''; $('steps').innerHTML='';
+  updateStagePipe('evidence',{evidence:'gathering…',reasoning:'weigh it up',decision:'the call'});
+  const p=new URLSearchParams({q:curQuery,id:o.id,kind:o.kind,name:o.name,depth:curDepth}); if(o.note)p.set('note',o.note);
+  es=new EventSource('/api/investigate?'+p.toString());
+  es.onmessage=(e)=>handleEvent(JSON.parse(e.data));
+  es.onerror=()=>{ if(es)es.close(); };
+}
+
+function handleEvent(e){
+  switch(e.type){
+    case 'status': $('status-text').textContent=e.message;
+      if(/reasoning/i.test(e.message)) updateStagePipe('reasoning',{evidence:'gathered',reasoning:'weighing…',decision:'the call'});
+      break;
+    case 'plan':{
+      if(!(e.plan||[]).length)break;
+      $('plan-box').classList.remove('hidden');
+      $('plan-list').innerHTML=e.plan.map((p,i)=>`<li style="animation-delay:${i*.08}s"><b>${String(i+1).padStart(2,'0')}</b><span class="q">${p.question}</span></li>`).join('');
+      break;
+    }
+    case 'source_start':{
+      stepCount++;
+      const n=String(stepCount).padStart(2,'0');
+      const row=document.createElement('div');
+      row.className='step card active'; row.id='step-'+e.source;
+      row.innerHTML=`<div class="num">(${n})</div>
+        <div><div class="purpose">${e.purpose||('Checking '+(SRC_LABELS[e.source]||e.source))} <span class="mini-spin"></span><span class="check">✓</span></div>
+        <div class="src">${SRC_LABELS[e.source]||e.source}</div>
+        <div class="finding"></div></div>`;
+      $('steps').appendChild(row);
+      break;
+    }
+    case 'source_done':{ const el=$('step-'+e.source); if(el){el.classList.remove('active');el.classList.add('done');el.querySelector('.finding').textContent=e.finding||'Done.';} break; }
+    case 'source_error':{ const el=$('step-'+e.source); if(el){el.classList.remove('active');el.classList.add('error');el.querySelector('.finding').textContent='Couldn’t reach this source.';} break; }
+    case 'brief': currentBrief=e.brief; renderBrief(e.brief); break;
+    case 'error': $('status-text').textContent=e.message; toast(e.message); break;
+    case 'done': if(es)es.close(); break;
+  }
+}
+
+/* ---------- step 3: the calm brief ---------- */
+function scoreColor(s){ return s>=80?'var(--good)':s>=60?'var(--ok)':s>=40?'var(--warn)':s>=20?'var(--bad)':'var(--danger)';}
+function verdictStyle(v){
+  const m={'Pursue':['var(--good)','▲'],'Explore':['var(--ok)','◆'],'Partner':['var(--steel)','◈'],'Pause':['var(--warn)','॥'],'Kill':['var(--danger)','✕']};
+  return m[v]||['var(--ink)','●'];
+}
+// Plain-English meaning of each verdict, so nobody has to decode the word.
+const VERDICT_MEANING={
+  'Pursue':'Strong case — worth committing real time and money.',
+  'Explore':'Promising, but early — worth a cheap test before committing.',
+  'Partner':'Worth doing, but share the cost and risk with a partner.',
+  'Pause':'Not compelling yet — wait for a key result before spending more.',
+  'Kill':'The public evidence points against it.'
+};
+function confBand(s){ return s>=80?'Strong':s>=60?'Fairly high':s>=40?'Moderate':s>=20?'Low':'Very low'; }
+function factorRows(factors){
+  const arr={up:'↑',down:'↓',neutral:'→'};
+  return (factors||[]).map(f=>{const e=(f.effect||'neutral').toLowerCase();
+    return `<div class="cfac ${e}"><div class="ar">${arr[e]||'→'}</div><div class="fn">${f.factor||''}</div><div class="fnote">${f.note||''}</div></div>`;}).join('');
+}
+const KNOWN_SOURCES={opentargets:1,clinicaltrials:1,chembl:1,pubmed:1,openfda:1};
+function sourceChips(ids,index){
+  return (ids||[]).filter(id=>KNOWN_SOURCES[id]||((index||{})[id])).map(id=>{const m=(index||{})[id];
+    if(m&&m.url)return `<a class="chip" href="${m.url}" target="_blank" rel="noopener"><span class="cd"></span>${m.label}</a>`;
+    return `<span class="chip"><span class="cd"></span>${id}</span>`;}).join('');
+}
+
+/* The Verdikt pipeline — evidence flows through three stages. Reused by the live
+   investigation (as a progress tracker) and the finished brief (as a jump-nav). */
+const PIPE=[
+  {key:'evidence',label:'Evidence',color:'var(--ok)'},
+  {key:'reasoning',label:'Reasoning',color:'var(--warn)'},
+  {key:'decision',label:'Decision',color:'var(--good)'},
+];
+function pipelineHtml(active,subs,clickable){
+  subs=subs||{}; const order=PIPE.map(s=>s.key); const ai=active==='done'?PIPE.length:order.indexOf(active);
+  return '<div class="pipe">'+PIPE.map((s,i)=>{
+    const st = active==='done'||i<ai ? 'done' : (i===ai?'active':'todo');
+    const dot = st==='todo' ? '' : `background:${s.color}`;
+    const onclick = clickable ? `onclick="scrollToStage('${s.key}')"` : '';
+    const node=`<div class="pnode ${st}" ${onclick}>
+        <div class="ph"><span class="pdot" style="${dot}"></span>${s.label}<span class="pchk">✓</span></div>
+        <div class="psub">${subs[s.key]||''}</div></div>`;
+    const conn = i<PIPE.length-1 ? `<div class="pconn ${ (active==='done'||i<ai)?'flowed':(i===ai?'flowing':'') }">→</div>` : '';
+    return node+conn;
+  }).join('')+'</div>';
+}
+function scrollToStage(key){ let el=document.getElementById('stage-'+key); if(!el&&key==='evidence')el=document.getElementById('stage-reasoning'); if(el)el.scrollIntoView({behavior:'smooth',block:'start'}); }
+function toggleStep(btn){
+  const step=btn.closest('.rstep'); const open=step.classList.toggle('open');
+  const n=btn.dataset.n||''; const lbl=btn.querySelector('.evt-lbl');
+  if(lbl) lbl.textContent = open ? 'Hide the evidence' : ('Show the '+n+' finding'+(n>1?'s':'')+' behind this');
+}
+function updateStagePipe(active,subs){ const el=$('stage-pipe'); if(el)el.innerHTML=pipelineHtml(active,subs,false); }
+
+function renderBrief(b){
+  const a=b.analysis||{}, idx=b.sourceIndex||{}, en=b.entity||{};
+  const score=a.confidence??0, col=scoreColor(score), [vcol,vico]=verdictStyle(a.verdict);
+  const depth=b.depth||a.depth||'quick';
+  const C=2*Math.PI*62, off=C*(1-score/100);
+  const gaps=(a.missing||[]).slice(0,2).map(m=>m.gap).filter(Boolean);
+  const dontKnow = gaps.length ? gaps.join('; ') + '.' : 'The main gaps are noted below.';
+
+  const rank=(a.opportunityRanking||[]);
+  const rankHtml = rank.length ? `<div class="section-title"><span class="t">Where it looks most promising</span></div>
+    <div class="card rank-list">${rank.map((o,i)=>`<div class="rank"><span class="rk">${String(i+1).padStart(2,'0')}</span>
+      <div><div class="rk-name">${o.indication||''}</div><div class="rk-note">${o.rationale||''}</div>
+      <div class="chips">${sourceChips(o.sources,idx)}</div></div></div>`).join('')}</div>` : '';
+  const srcFoot=Object.entries(idx).map(([k,m])=>`<a class="src-link" href="${m.url}" target="_blank" rel="noopener">↗ ${m.label}</a>`).join('');
+
+  // Evidence lives INSIDE each reasoning step (open/collapse), not as a separate list.
+  const log=(b.evidence||{}).evidenceLog||[];
+  const evMap={}; log.forEach(e=>{evMap[e.source]={finding:e.finding,label:e.label,url:(idx[e.source]||{}).url};});
+  function stepEvidenceRows(sources){
+    return (sources||[]).map(sid=>{const e=evMap[sid]; if(!e)return null;
+      const link=e.url?` <a class="rev-link" href="${e.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a>`:'';
+      return `<div class="rev"><span class="rev-src">${e.label||sid}</span><span class="rev-find">${e.finding||''}${link}</span></div>`;}).filter(Boolean);
+  }
+  const steps=a.reasoningSteps||[];
+  const stepsHtml = steps.length ? steps.map((s,i)=>{const rows=stepEvidenceRows(s.sources); const n=rows.length;
+    return `<div class="card rstep${n?' has-ev':''}"><div class="rn">${i+1}</div>
+      <div style="min-width:0"><div class="rt">${s.step||''}</div>
+        ${(s.sources&&s.sources.length)?`<div class="chips">${sourceChips(s.sources,idx)}</div>`:''}
+        ${n?`<button class="ev-toggle" data-n="${n}" onclick="toggleStep(this)"><span class="evt-ic">▸</span><span class="evt-lbl">Show the ${n} finding${n>1?'s':''} behind this</span></button>
+          <div class="rev-list">${rows.join('')}</div>`:''}</div></div>`;}).join('')
+    : '<div class="empty" style="padding:0 4px">Reasoning trace not available.</div>';
+
+  // ONE "for & against" panel = the score explanation AND the agreement/conflict view.
+  // Built from confidenceFactors (falls back to supporting/contradicting for old data).
+  const evItem=(x)=>`<div class="ev"><div class="claim">${x.claim||x.factor||''}</div><div class="detail">${x.detail||x.note||''}</div><div class="chips">${sourceChips(x.sources,idx)}</div></div>`;
+  const factors=a.confidenceFactors||[];
+  const upF=factors.filter(f=>(f.effect||'').toLowerCase()==='up');
+  const downF=factors.filter(f=>(f.effect||'').toLowerCase()==='down');
+  const supList=upF.length?upF:(a.supporting||[]);
+  const conList=downF.length?downF:(a.contradicting||[]);
+  const sup=supList.map(evItem).join('')||'<div class="empty">Nothing notable.</div>';
+  const con=conList.map(evItem).join('')||'<div class="empty">Nothing notable.</div>';
+  const missHtml=(a.missing||[]).map(m=>`<div class="miss"><b>${m.gap||''}</b><span>${m.whyItMatters||''}</span></div>`).join('')||`<div class="miss"><span>${dontKnow}</span></div>`;
+
+  // Only *push* full due diligence when the first look says it's worth it.
+  const promising=['Pursue','Explore','Partner'].includes(a.verdict);
+  let ctaHtml='';
+  if(depth==='deep'){
+    ctaHtml=`<div class="deep-badge">✓ Full due diligence — deep evidence &amp; complete reasoning</div>`;
+  } else if(promising){
+    ctaHtml=`<div class="deep-cta worth no-print">
+      <div class="dct"><b>Looks worth a closer look.</b> This is a first look. Before you commit real time or money, verify it with full due diligence — deeper evidence, the complete step-by-step reasoning, and a ranked list of the strongest age-related indications.</div>
+      <button class="btn primary" onclick="beginRun('deep')">Run full due diligence →</button></div>`;
+  } else if(a.verdict==='Pause'){
+    ctaHtml=`<div class="deep-cta no-print">
+      <div class="dct"><b>First look — not compelling yet.</b> The evidence is mixed. If you want the complete picture before deciding, run full due diligence.</div>
+      <button class="btn" onclick="beginRun('deep')">Run full due diligence</button></div>`;
+  } else {
+    ctaHtml=`<div class="deep-cta quiet no-print">
+      <div class="dct">First look — the public evidence currently points against it, so a deep dive is unlikely to change the call. You can still run the complete record if you need it.</div>
+      <button class="btn" onclick="beginRun('deep')">Run full due diligence anyway</button></div>`;
+  }
+
+  $('view-brief').innerHTML=`
+    <div class="stage-head" style="margin-top:14px">
+      <h2>${en.name||b.query}</h2><span class="kind">${en.kind||''}</span><span class="eid">${en.id||''}</span>
+      <span class="pill" style="margin-left:auto">engine · ${b.engine||''}</span>
+    </div>
+    ${en.note?`<div class="note-banner">ℹ ${en.note}</div>`:''}
+
+    <div class="card hero">
+      <div class="dial"><svg width="140" height="140" viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="62" fill="none" stroke="var(--line-2)" stroke-width="9"/>
+        <circle cx="70" cy="70" r="62" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"
+          stroke-dasharray="${C}" stroke-dashoffset="${C}" id="dial-arc"/></svg>
+        <div class="num"><b style="color:${col}">${score}</b><span>${confBand(score)}</span></div></div>
+      <div><span class="verdict-chip" style="background:${vcol}"><span>${vico}</span>${a.verdict||'—'}</span><span class="tier-badge">${depth==='deep'?'Full due diligence':'First look'}</span>
+        <div class="vmean">${VERDICT_MEANING[a.verdict]||''}</div>
+        <div class="rec">${a.recommendation||''}</div></div>
+    </div>
+
+    ${pipelineHtml('done',{evidence:`${log.length} sources`,reasoning:`${steps.length} steps`,decision:`${a.verdict||'—'} · ${score}`},true)}
+
+    ${ctaHtml}
+
+    <!-- Why this score = the one for/against view -->
+    <div class="phase" id="stage-decision"><span class="pdot" style="background:var(--good)"></span><span class="pt">Why the score is ${score}/100</span><span class="ps">${confBand(score)} confidence — what's for and against</span></div>
+    <div class="foragainst-note">${a.confidenceRationale||"These are the things that raised and lowered the confidence score."}</div>
+    <div class="vs">
+      <div class="card col agree"><div class="col-h"><span class="dotc"></span>What supports it<span class="tag">${supList.length}</span></div>${sup}</div>
+      <div class="card col conflict"><div class="col-h"><span class="dotc"></span>What works against it<span class="tag">${conList.length}</span></div>${con}</div>
+    </div>
+
+    <!-- Reasoning: each step opens to show the evidence behind it -->
+    <div class="phase" id="stage-reasoning"><span class="pdot" style="background:var(--warn)"></span><span class="pt">How we weighed it</span><span class="ps">tap a step to see the evidence behind it</span></div>
+    <div class="rsteps">${stepsHtml}</div>
+
+    ${rankHtml}
+
+    <div class="section-title"><span class="t">What we still don't know</span></div>
+    <div class="missing-card">${missHtml}</div>
+
+    <div class="card decide no-print">
+      <div class="dh">Your call</div>
+      <div class="dsub">Verdikt informs — you decide. Add your judgment; it's saved into the export.</div>
+      <textarea id="analyst-note" placeholder="e.g. Agree — worth a small phase-2 in osteoarthritis. Revisit after PEARL readout."></textarea>
+    </div>
+
+    <div class="section-title"><span class="t">Every claim links back to its source</span></div>
+    <div class="src-footer">${srcFoot}</div>
+
+    <div class="actions no-print">
+      <button class="btn primary" onclick="exportMarkdown()">⬇ Markdown</button>
+      <button class="btn" onclick="window.print()">Print / PDF</button>
+      <button class="btn" onclick="goHome()">+ New investigation</button>
+    </div>
+    <div class="disclaimer">Based only on public evidence. For research, not medical advice — and not a final decision.</div>`;
+  show('brief');
+  requestAnimationFrame(()=>{const arc=$('dial-arc');if(arc){arc.style.transition='stroke-dashoffset 1.1s cubic-bezier(.2,.7,.2,1)';arc.style.strokeDashoffset=off;}});
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function exportMarkdown(){
+  if(!currentBrief)return;
+  const note=document.getElementById('analyst-note'); if(note)currentBrief.analystNote=note.value.trim();
+  try{
+    const r=await fetch('/api/export/markdown',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(currentBrief)});
+    const blob=await r.blob(), url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download='verdikt_'+((currentBrief.entity||{}).name||'brief').replace(/\s+/g,'_')+'.md';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); toast('Markdown downloaded');
+  }catch(e){ toast('Export failed'); }
+}
+
+renderExamples(); loadHealth(); $('q').focus();
+</script>
+</body>
+</html>

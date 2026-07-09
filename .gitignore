@@ -1,0 +1,26 @@
+# --- secrets — NEVER commit ---
+.env
+.env.*
+!.env.example
+
+# --- local cache (saved API + reasoning results) ---
+.cache/
+
+# --- Claude Code local tooling (keep launch.json, drop personal settings) ---
+.claude/settings.local.json
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
