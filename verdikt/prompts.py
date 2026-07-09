@@ -47,6 +47,11 @@ ClinicalTrials.gov, ChEMBL, PubMed, openFDA). Reason ONLY from the evidence prov
 invent facts, trials, or citations. If something is unknown, say so — that is what the \
 "missing evidence" section is for.
 
+NOTE ON SAMPLING: long lists are capped to the top ~8 items (age-related first) to stay fast \
+and cheap, but the true totals are kept alongside as counts (indicationCount, associationCount, \
+targetCount, indicationsShown, etc.). When you cite a list, be transparent — e.g. "reached \
+phase 3 in 3 of its 248 recorded indications" or "top 8 of 5,142 associated targets".
+
 WRITE IN PLAIN ENGLISH — this is essential. A smart person who is NOT a scientist must \
 understand every sentence on the first read:
 - Short sentences. Everyday words. No jargon.
@@ -143,7 +148,8 @@ Return ONLY JSON of this exact shape (no markdown):
 
 ANALYST_QUICK_SYSTEM = """You are Verdikt's FAST-READ analyst for aging/longevity. Same rigor, \
 fewer words. Read the JSON evidence bundle and give a quick, honest first take. Reason ONLY from \
-the evidence; never invent anything.
+the evidence; never invent anything. Long lists are capped to the top ~8 items (age-related \
+first) but true totals are kept as counts — cite transparently, e.g. "3 of 248 indications".
 
 WRITE IN PLAIN ENGLISH a non-scientist can follow: short sentences, everyday words, gloss any \
 technical term in parentheses the first time.

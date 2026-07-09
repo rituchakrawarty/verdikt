@@ -23,6 +23,12 @@ from .sources.base import SourceError
 
 Emit = Callable[[dict], None]
 
+# We send the reasoning engine only the top N items of each long list (prioritising
+# age-related ones), which keeps cost low. We ALWAYS keep the true total count next to
+# it (indicationCount, associationCount, targetCount) so nothing is hidden — the brief
+# shows "top 8 of N", and every source chip links to the complete data.
+TOP_N = 8
+
 
 def _noop(_event: dict) -> None:
     pass
@@ -149,6 +155,13 @@ class Investigator:
             index["openfda"] = {"label": "openFDA", "url": label["url"]}
 
         aging_indications = longevity.filter_age_related((ot or {}).get("indications", []), "disease")
+        # Trim the indications list (metformin has 248 → ~20k tokens). Keep age-related
+        # first, cap at TOP_N; indicationCount still holds the real total.
+        if ot:
+            rest = [i for i in ot.get("indications", []) if i not in aging_indications]
+            ot["indications"] = (aging_indications + rest)[:TOP_N]
+            ot["indicationsShown"] = len(ot["indications"])
+
         signals = {
             "approved": bool(ot and ot.get("maxClinicalStage") == "APPROVAL")
             or bool(mol and str(mol.get("maxPhase")) in ("4", "4.0")),
@@ -231,6 +244,13 @@ class Investigator:
             index["pubmed"] = {"label": "PubMed", "url": lit["url"]}
 
         aging_assoc = longevity.filter_age_related((ot or {}).get("associations", []), "disease")
+        # Trim disease associations (age-related first), keeping associationCount intact.
+        if ot:
+            rest = [a for a in ot.get("associations", []) if a not in aging_assoc]
+            ot["associations"] = (aging_assoc + rest)[:TOP_N]
+            ot["associationsShown"] = len(ot["associations"])
+            ot["clinicalCandidates"] = ot.get("clinicalCandidates", [])[:TOP_N]
+
         best_genetic = 0.0
         for a in (ot or {}).get("associations", []):
             best_genetic = max(best_genetic, a.get("datatypes", {}).get("Human genetics", 0) or 0)
@@ -272,6 +292,8 @@ class Investigator:
                               lambda: self.ot.disease(entity.id), f_ot)
         if ot:
             index["opentargets"] = {"label": "Open Targets", "url": ot["url"]}
+            # Keep only the top targets for the LLM; targetCount holds the real total.
+            ot["topTargets"] = ot.get("topTargets", [])[:TOP_N]
 
         def f_trials(t):
             if not t:

@@ -109,14 +109,15 @@ class OpenTargets(BaseSource):
         d = data.get("drug")
         if not d:
             return None
-        moa = [
-            {
+        moa = []
+        for r in (d.get("mechanismsOfAction") or {}).get("rows", []):
+            syms = [t["approvedSymbol"] for t in (r.get("targets") or []) if t.get("approvedSymbol")]
+            moa.append({
                 "mechanism": r["mechanismOfAction"],
                 "actionType": r.get("actionType"),
-                "targets": [t["approvedSymbol"] for t in (r.get("targets") or []) if t.get("approvedSymbol")],
-            }
-            for r in (d.get("mechanismsOfAction") or {}).get("rows", [])
-        ]
+                "targets": syms[:8],          # top 8 kept for the brief; full count below
+                "targetsTotal": len(syms),
+            })
         indications = [
             {
                 "maxPhase": r.get("maxClinicalStage"),
