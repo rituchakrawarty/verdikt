@@ -68,6 +68,25 @@ python -m tests.test_answer_key               # scorecard vs a known answer key
 
 ---
 
+## Deploy a live demo (shareable URL)
+
+This is a Python web app, so it needs a host that runs Python — **GitHub Pages will not work**
+(it only serves static files, and your Claude key must stay server-side).
+
+**Render (free, ~5 minutes):**
+1. Push this repo to GitHub (this repo includes a `render.yaml` Blueprint).
+2. Go to [render.com](https://render.com) → **New → Blueprint** → select this repo.
+3. When prompted, paste your `ANTHROPIC_API_KEY` (stored as a secret, never in the repo).
+4. Deploy → you get a public URL like `https://verdikt.onrender.com`.
+
+The free tier sleeps after inactivity, so the first visit after idle takes ~30s to wake.
+
+**Quick temporary link (no deploy):** run it locally, then expose it with a tunnel —
+`npx cloudflared tunnel --url http://localhost:8123` (or `ngrok http 8123`) — you'll get a public
+URL that works while your machine is running it. Good for a quick demo.
+
+---
+
 ## How a request flows
 
 1. **Resolve** — free text → the right entity + ID via Open Targets’ `search` (longevity *classes*

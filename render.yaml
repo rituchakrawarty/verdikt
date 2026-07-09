@@ -1,0 +1,21 @@
+# Render.com Blueprint — deploy Verdikt as a free web service.
+# 1. Push this repo to GitHub (done).
+# 2. On https://render.com → New → Blueprint → pick this repo.
+# 3. When prompted, paste your ANTHROPIC_API_KEY (kept secret, never in the repo).
+services:
+  - type: web
+    name: verdikt
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn verdikt.server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false        # Render will ask you for this value; it stays secret
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Optional — uncomment and add in the dashboard to lift rate limits:
+      # - key: NCBI_API_KEY
+      #   sync: false
+      # - key: OPENFDA_API_KEY
+      #   sync: false
