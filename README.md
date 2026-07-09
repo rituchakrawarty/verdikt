@@ -81,6 +81,13 @@ This is a Python web app, so it needs a host that runs Python — **GitHub Pages
 
 The free tier sleeps after inactivity, so the first visit after idle takes ~30s to wake.
 
+**Hugging Face Spaces (free, good for AI demos):** this repo includes a `Dockerfile`.
+Create a new **Space** → SDK **Docker** → add your files, then set `ANTHROPIC_API_KEY` under the
+Space's **Settings → Secrets**. The app serves on port 7860 (handled by the Dockerfile).
+
+> 💸 **Heads-up:** hosting is free, but every investigation spends Claude tokens on *your* key.
+> Set a spending limit in the Anthropic console and share the link with people you trust.
+
 **Quick temporary link (no deploy):** run it locally, then expose it with a tunnel —
 `npx cloudflared tunnel --url http://localhost:8123` (or `ngrok http 8123`) — you'll get a public
 URL that works while your machine is running it. Good for a quick demo.
