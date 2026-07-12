@@ -17,6 +17,44 @@ the reasoning engine.
 
 ---
 
+## The problem — validated
+
+![The problem, validated: only 6 of 53 landmark preclinical cancer studies could be independently reproduced when Amgen tried, and >70% of 1,576 surveyed scientists have failed to reproduce another researcher's results — while the cost of getting it wrong is 37M+ papers to sift, ~67 weeks per systematic review, a 3.4% oncology approval rate, and ~$2.6B per approved drug.](docs/problem.png)
+
+**Drug discovery doesn't fail for lack of data. It fails on *which evidence to trust*.** Before a
+single go/no-go call — a decision that costs billions and takes years — a team spends weeks
+manually triangulating trials, papers, FDA labels, and databases, and the evidence underneath them
+is uneven. Every part of that pain is documented — and every number below links to its source:
+
+| The reality | What the evidence shows |
+|---|---|
+| **Published evidence is often unreliable** | Amgen could independently reproduce only **6 of 53** landmark preclinical cancer studies.¹ In a survey of 1,576 scientists, **>70%** had failed to reproduce another researcher's results.² |
+| **There is far too much of it** | PubMed indexes **>37 million** papers and grows by **~1.5 million/year** (~4,000/day).³ |
+| **Vetting it by hand is slow** | A biomedical systematic review takes a **mean of ~67 weeks** to complete.⁴ |
+| **The stakes are enormous** | Just **3.4%** of oncology drugs entering clinical trials reach approval (13.8% across all areas),⁵ at **~$2.6 billion** per approved drug.⁶ |
+| **Good tooling is locked away** | Proprietary evidence-intelligence platforms run from **~$30k–$80k+/year** (GlobalData) to **six figures/year** (Clarivate Cortellis) — real money that prices out small and mid-size teams.⁷ |
+
+**Verdikt is the decision-intelligence layer between that evidence and a billion-dollar bet.** It
+reconciles agreeing-vs-conflicting evidence, traces every claim to its source, and stays
+low-confidence when the evidence is thin — instead of hallucinating certainty.
+
+> **Market.** AI in drug discovery was **~$1.7B in 2024**, projected to **~$8.5B by 2030** at
+> **~30% CAGR**⁸ — the tooling layer around a global pharma R&D spend measured in hundreds of
+> billions per year.
+
+<sub>
+¹ [Begley & Ellis, *Nature* 483:531 (2012)](https://www.nature.com/articles/483531a) ·
+² [Baker, *Nature* 533:452 (2016)](https://www.nature.com/articles/533452a) ·
+³ [PubMed / NLM (2024)](https://www.nlm.nih.gov/oet/ed/pubmed/06-24_oh-pubmed.html) ·
+⁴ [Borah et al., *BMJ Open* 7:e012545 (2017)](https://pubmed.ncbi.nlm.nih.gov/28242767/) ·
+⁵ [Wong, Siah & Lo, *Biostatistics* 20:273 (2019)](https://pmc.ncbi.nlm.nih.gov/articles/PMC6409418/) ·
+⁶ [DiMasi et al., Tufts CSDD / *J. Health Economics* (2016)](https://pubmed.ncbi.nlm.nih.gov/26928437/) ·
+⁷ [Pharma market-intelligence pricing overview](https://intuitionlabs.ai/articles/pharmaceutical-market-intelligence-providers) ·
+⁸ [AI-in-drug-discovery market sizing (Arizton / Research & Markets)](https://www.arizton.com/market-reports/ai-in-drug-discovery-market)
+</sub>
+
+---
+
 ## What it looks like
 
 ![Verdikt turns one input — metformin — into a confidence-scored, source-cited decision brief: a 62/100 "Explore" verdict, an Evidence → Reasoning → Decision pipeline, and side-by-side "what supports it" vs. "what works against it" panels.](docs/screenshot.png)
@@ -136,12 +174,72 @@ tests/test_answer_key.py     Scores output against metformin / rapamycin / senol
 `agent.build_reasoner()` returns a Claude-powered reasoner when `ANTHROPIC_API_KEY` is set, else a
 transparent heuristic. Both are engine-agnostic enough that the answer-key test passes either way.
 
+### Deployment: one engine, pluggable sources
+Verdikt separates *how evidence is gathered* from *how it's judged*. Every source is a `BaseSource`
+([sources/base.py](verdikt/sources/base.py)) behind a uniform interface, so the transport is a
+swappable seam:
+
+- **Standalone (this repo).** The five sources are queried over their public REST/GraphQL APIs, so
+  Verdikt runs anywhere with internet + a key — the web app, a container, a plain script, or a
+  Claude/Cowork skill ([SKILL.md](SKILL.md)). No host runtime required.
+- **Inside a connector host (e.g. Claude Science).** The same engine is *designed to* source that
+  evidence through the host's own database connectors instead of its own REST calls — no duplicate
+  fetching — because only the source adapter changes; the five-tier rubric and calibrated scoring
+  stay identical. *(This `McpSources` adapter is on the roadmap, not yet wired in.)*
+
+The reasoning is the product; the fetch layer is an implementation detail you can point wherever the
+evidence lives. The REST clients also encode *what* to ask each source (association scores, pChEMBL,
+`whyStopped` on failed trials), so that domain logic is reused regardless of transport.
+
 ---
 
 ## Domain note: “aging” isn’t one disease
 The databases don’t model “aging” directly, so Verdikt maps longevity targets/drugs to the
 **age-related diseases** they touch — osteoarthritis, pulmonary fibrosis, sarcopenia, Alzheimer’s,
 metabolic disease — and reasons about those.
+
+---
+
+## FAQ
+
+**Isn't re-fetching the five sources redundant inside Claude Science, which already has data connectors?**
+Right instinct — and it's exactly why the source layer is a pluggable seam (see *Deployment* above).
+Standalone, Verdikt fetches over public APIs so it runs anywhere; inside a connector host it's
+*designed to* read through the host's connectors instead, with **no change to the rubric or scoring**.
+The REST clients also encode *what* to ask each source, so that domain logic is reused either way.
+
+**How is this different from asking ChatGPT/Claude to "review the literature"?**
+A chat model answers from memory and can invent citations. Verdikt gathers a structured evidence
+bundle from five databases *first*, then reasons **only** over it, and links every claim to a real
+source id. It's evidence-grounded by construction, not by good intentions.
+
+**Is it RAG? Does it use a vector database?**
+No embeddings, no vector store. Evidence is retrieved by *structured* queries to each source's API
+(IDs, scores, phases, counts) — not by semantic similarity — so the gathering is deterministic and
+inspectable.
+
+**How is the confidence score calibrated — is the weighting hard-coded?**
+The five-tier evidence hierarchy and the 0–100 bands are an explicit rubric the model is *held to*
+([prompts.py](verdikt/prompts.py)), and outputs are sanity-checked against a known answer key
+([tests/test_answer_key.py](tests/test_answer_key.py)). It is **not** post-hoc statistical
+calibration, and — in the Claude path — **not** a fixed numeric formula; the transparent additive
+formula lives only in the no-key `HeuristicReasoner` fallback.
+
+**Why aging & longevity specifically?**
+"Aging" isn't one disease in these databases, so evidence quality varies wildly across longevity,
+senescence, inflammation, and neurodegeneration — the domain where "which evidence to trust" bites
+hardest. Verdikt maps targets/drugs to the concrete age-related diseases they touch and reasons about
+those.
+
+**What are the limits?**
+Research triage only — **not medical advice, not a final decision.** Verdikt sees *public* data only;
+it can't see internal PK/tox, patents, manufacturing, or commercial data, and it says so in the
+"missing evidence" section. A fast, honest first read — not a verdict to act on blindly.
+
+**Does it need an API key? What does it cost?**
+It runs without a key on a clearly-labelled rule-based fallback. With a key, each investigation spends
+Claude tokens — kept low by prompt caching, top-8 evidence sampling, and an evidence-keyed cache that
+makes repeats near-free.
 
 ---
 
