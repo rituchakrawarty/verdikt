@@ -6,6 +6,9 @@
 # --- local cache (saved API + reasoning results) ---
 .cache/
 
+# --- internal working notes (kept local, not for the public repo) ---
+HANDOFF.md
+
 # --- Claude Code local tooling (keep launch.json, drop personal settings) ---
 .claude/settings.local.json
 
