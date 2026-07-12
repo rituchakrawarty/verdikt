@@ -19,9 +19,7 @@ the reasoning engine.
 
 ## What it looks like
 
-<!-- Add a screenshot here after your first run, e.g.:
-![Verdikt brief](docs/screenshot.png)
--->
+![Verdikt turns one input — metformin — into a confidence-scored, source-cited decision brief: a 62/100 "Explore" verdict, an Evidence → Reasoning → Decision pipeline, and side-by-side "what supports it" vs. "what works against it" panels.](docs/screenshot.png)
 
 - **One search bar.** Type `metformin`, press enter.
 - **Confirm step (human in the loop).** Verdikt shows what it thinks you mean (`metformin` → the
