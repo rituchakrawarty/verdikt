@@ -14,6 +14,17 @@ services:
         sync: false        # Render will ask you for this value; it stays secret
       - key: PYTHON_VERSION
         value: "3.11.9"
+      # --- Public-demo cost guard (bounds token spend on this shared URL) ---
+      # Caps requests without limiting what visitors can search. Tune in the
+      # dashboard. Your Anthropic account spend limit is the hard backstop.
+      - key: VERDIKT_DEMO
+        value: "1"
+      - key: VERDIKT_DAILY_CAP
+        value: "150"        # max investigations/day across all visitors
+      - key: VERDIKT_IP_HOURLY_CAP
+        value: "6"          # max investigations/hour per IP
+      # Keep Opus for now; to drop to a cheaper model later, set VERDIKT_MODEL
+      # (e.g. claude-sonnet-5) here in the dashboard — no redeploy needed.
       # Optional — uncomment and add in the dashboard to lift rate limits:
       # - key: NCBI_API_KEY
       #   sync: false

@@ -50,6 +50,14 @@ class Config:
     # A contact email is required by NCBI E-utilities etiquette.
     contact_email: str = "research@verdikt.local"
 
+    # --- Public-demo cost guard (only active when VERDIKT_DEMO=1) ---
+    # Bounds token spend on a shared public URL without restricting *what* users
+    # can search: a per-IP hourly limit plus a global daily ceiling. Local runs
+    # and the video recording leave VERDIKT_DEMO unset and are fully unrestricted.
+    demo_mode: bool = False
+    demo_daily_cap: int = 150        # max investigations/day across all visitors
+    demo_ip_hourly_cap: int = 6      # max investigations/hour per IP
+
     @classmethod
     def from_env(cls) -> "Config":
         return cls(
@@ -58,6 +66,9 @@ class Config:
             ncbi_api_key=os.getenv("NCBI_API_KEY"),
             openfda_api_key=os.getenv("OPENFDA_API_KEY"),
             contact_email=os.getenv("VERDIKT_CONTACT_EMAIL", "research@verdikt.local"),
+            demo_mode=os.getenv("VERDIKT_DEMO", "").strip() in ("1", "true", "True", "yes"),
+            demo_daily_cap=int(os.getenv("VERDIKT_DAILY_CAP", "150")),
+            demo_ip_hourly_cap=int(os.getenv("VERDIKT_IP_HOURLY_CAP", "6")),
         )
 
 
