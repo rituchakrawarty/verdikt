@@ -2,6 +2,11 @@
   <img src="docs/logo.png" alt="VERDIKT — evidence to confident decisions" width="440">
 </p>
 
+<p align="center">
+  <a href="https://verdikt-m4pq.onrender.com"><strong>🔬 Try it live →</strong></a><br/>
+  <sub>Live demo on Render's free tier — the first visit after idle may take ~30s to wake.</sub>
+</p>
+
 # Verdikt — the Evidence-to-Decision Engine
 
 **Type in one thing — a drug, a gene, or a disease linked to aging — and Verdikt reads five
