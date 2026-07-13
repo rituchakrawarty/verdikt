@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from datetime import datetime, timezone
 from typing import Callable, Protocol
 
@@ -349,6 +350,8 @@ class Agent:
         # (e.g. an unparseable reply), fall back to the heuristic so the user
         # always gets a brief rather than a dead end.
         emit({"type": "status", "message": "Reasoning over the evidence…"})
+        if self.config.demo_step_delay:  # let the reasoning phase read on camera (cached = instant)
+            time.sleep(self.config.demo_step_delay * 2)
         try:
             analysis = self.reasoner.analyze(entity.as_dict(), bundle, depth=depth)
         except Exception as exc:

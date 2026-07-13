@@ -14,9 +14,11 @@ render source chips.
 """
 from __future__ import annotations
 
+import time
 from typing import Callable
 
 from . import longevity
+from .config import CONFIG
 from .resolver import ResolvedEntity
 from .sources import ChEMBL, ClinicalTrials, OpenFDA, OpenTargets, PubMed
 from .sources.base import SourceError
@@ -56,6 +58,8 @@ class Investigator:
         and recording it in the evidence log so the brief can show the Evidence
         phase (what each database contributed)."""
         emit({"type": "source_start", "source": source_id, "label": label, "purpose": purpose})
+        if CONFIG.demo_step_delay:  # pace the pipeline so each step is filmable (cached = instant)
+            time.sleep(CONFIG.demo_step_delay)
         result, finding, ok = None, "", True
         try:
             result = fn()

@@ -58,6 +58,10 @@ class Config:
     demo_daily_cap: int = 150        # max investigations/day across all visitors
     demo_ip_hourly_cap: int = 6      # max investigations/hour per IP
 
+    # --- Recording aid: paces the live pipeline so each source visibly steps
+    # (spinner -> check) even when cached. Seconds per source; 0 = off (default).
+    demo_step_delay: float = 0.0
+
     @classmethod
     def from_env(cls) -> "Config":
         return cls(
@@ -69,6 +73,7 @@ class Config:
             demo_mode=os.getenv("VERDIKT_DEMO", "").strip() in ("1", "true", "True", "yes"),
             demo_daily_cap=int(os.getenv("VERDIKT_DAILY_CAP", "150")),
             demo_ip_hourly_cap=int(os.getenv("VERDIKT_IP_HOURLY_CAP", "6")),
+            demo_step_delay=float(os.getenv("VERDIKT_STEP_DELAY", "0")),
         )
 
 
