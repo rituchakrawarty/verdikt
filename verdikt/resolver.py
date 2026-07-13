@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from . import longevity
 from .sources.opentargets import OpenTargets
 
 # Aging is not one disease in these databases, so we anchor longevity-flavoured
@@ -97,10 +98,18 @@ class EntityResolver:
         lowered = search_text.lower()
         best = self._rank(hits, lowered)
 
+        # Keep the picker on-focus: drugs and targets always, but only
+        # aging-related diseases (Verdikt reasons through an aging/longevity lens,
+        # so unrelated diseases like head & neck cancer would just be noise here).
+        def _keep(h) -> bool:
+            if h.get("entity") in ("drug", "target"):
+                return True
+            return longevity.is_age_related(h.get("name"))
+
         alternatives = [
             {"kind": h["entity"], "id": h["id"], "name": h["name"]}
             for h in hits
-            if h["id"] != best["id"]
+            if h["id"] != best["id"] and _keep(h)
         ][:5]
 
         return ResolvedEntity(
