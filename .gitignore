@@ -9,6 +9,11 @@
 # --- internal working notes (kept local, not for the public repo) ---
 HANDOFF.md
 
+# --- logo design sources (the app ships mark.png + favicon.png, derived from these) ---
+frontend/Icon*.png
+frontend/Verdikt-icon.jpg
+frontend/Verdikt-logo.png
+
 # --- Claude Code local tooling (keep launch.json, drop personal settings) ---
 .claude/settings.local.json
 

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="VERDIKT — evidence to confident decisions" width="440">
+</p>
+
 # Verdikt — the Evidence-to-Decision Engine
 
 **Type in one thing — a drug, a gene, or a disease linked to aging — and Verdikt reads five
